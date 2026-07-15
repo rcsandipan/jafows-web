@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flat Owners</title>
+    <script type="module" src="scrollingMessage.js"></script>
+    <!-- <link rel="stylesheet" href="homepage.css">
+    <link rel="stylesheet" href="tablestyle.css"> -->
+    <link rel="stylesheet" href="styles.css"> 
+
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+     <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+</head>
+<style>
+    a{
+    text-decoration: none;
+    color: white;
+    cursor: pointer;
+}
+   #provdetaildiv{
+    position: fixed;
+    top: 200px; /* Distance from the top */
+      right: 100px; /* Distance from the right */
+      background-color: #FFDEC8;
+      border: 1px solid black;
+      z-index: 1000; /* Ensure it's above other elements */
+      overflow: auto;
+   }
+   #provdetailtable td  {
+    border: 1px solid black;
+   }
+   #provdetailtable th  {
+    border: 1px solid black;
+   }
+      /* Add this CSS to position the open-btn */
+      .main-content {
+      position: relative; /* Required for absolute positioning of child elements */
+      top: 25px;
+    }
+    
+</style>
+
+<body>
+
+
+<div class="main-content">
+    <button class="btn btn-success" id="home-btn"> HOME</button>
+    <h1 style="display:flex; text-align: center; margin-left: 40%;"> OWNERS LIST</h1>
+    
+<div>Total Count: <b id="searchcount"></b> </div>
+<div style="display: inline-flex; justify-content: space-evenly;" >
+    
+    <div  style="margin-right: 700px; width: 400px;" >
+ 
+<br>
+    <input type="text" id="searchInput" class="form-control"
+           placeholder="🔍 Search keywords" width="500px"
+           >
+   </div>
+
+<div>
+    <button class="btn btn-primary" id="exportBtn" >
+    Export to Excel
+</button>
+</div>
+
+
+ </div>
+
+    <table class="table table-bordered" id="ownerdata-table" style="margin-top: 20px;">
+      <thead>
+        <tr>
+          <th>Block</th>
+          <th>Floor</th>
+          <th>Owner's Name</th>
+          <th>Contact No</th>
+          <th>Subscription</th>
+          <th>Action</th>
+
+         
+
+        </tr>
+      </thead>
+      <tbody id="ownerdata-body">
+        <!-- Filled by JS -->
+      </tbody>
+    </table>
+
+</div>
+   
+    
+
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script src="https://cdn.rawgit.com/rainabba/jquery-table2excel/1.1.0/dist/jquery.table2excel.min.js"></script>
+    <script src="script.js"></script>
+    
+    <script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+//import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+ import { app} from "./firebase-config.js";  
+
+//const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+
+
+const dataRef = ref(db, 'flatowners');
+
+
+let allOwners = {};
+
+onValue(dataRef, (snapshot) => {
+    allOwners = snapshot.val() || {};
+
+    //     populateYearSelect(allMeetings);
+
+    // // Show latest year by default
+    // const defaultYear = document.getElementById("yearFilter").value;
+    // displayMeetings(defaultYear);
+
+ 
+     renderTable();
+});
+
+
+
+
+
+
+
+/* ============================= */
+/* ===== RENDER TABLE ========= */
+/* ============================= */
+function renderTable() {
+
+    const tbody = document.getElementById("ownerdata-body");
+   
+    const searchText = document.getElementById("searchInput").value.toLowerCase();
+    let searchcount = document.getElementById('searchcount');
+
+    tbody.innerHTML = "";
+
+    let filteredData = [];
+
+    for (let key in allOwners) {
+
+        const ownerdata = allOwners[key];
+        ownerdata.key = key;
+
+      
+
+        
+        /* SEARCH FILTER */
+        const rowText = Object.values(ownerdata).join(" ").toLowerCase();
+        if (!rowText.includes(searchText)) continue;
+
+        filteredData.push(ownerdata);
+    }
+
+
+
+    
+
+    /* ============================= */
+    /* ===== CREATE ROWS ========== */
+    /* ============================= */
+    filteredData.forEach(ownerdata => {
+
+     
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            
+            <td>${ownerdata.block || ''}</td>
+            <td>${ownerdata.floor || ''}</td>
+            <td>${ownerdata.owner || ''}</td>
+            <td>${ownerdata.contact || ''}</td>
+             <td>${ownerdata.subsupdate || ''}</td>
+            <td>
+                <a class="btn btn-primary btn-xs subs-btn">
+                    Edit
+                </a>
+            </td>
+            
+           
+        `;
+        row.querySelector(".subs-btn").addEventListener("click", () => editSubs(ownerdata));
+        tbody.appendChild(row);
+    });
+    searchcount.innerText = filteredData.length;
+}
+
+  window.editSubs = function (ownerdata) {
+   
+    console.log("Edit clicked", ownerdata.key);
+  Swal.fire({
+    title: 'Edit Subscription Data',
+    width: 500,
+    html: `
+    <div style="text-align: left; font-size: 12px; width: 100%; display: flex; flex-direction: column; gap: 0;">
+
+	<label><span style="color: red;">Owner: </span>
+                <input id="swal_owner" class="swal2-input" value="${ownerdata.owner}"  style="margin:0;">
+            </label>
+	<label><span style="color: red;">Contact No: </span>
+                <input id="swal_contact" class="swal2-input" value="${ownerdata.contact}"  style="margin:0;">
+            </label>
+
+      <label><span style="color: red;">Subscription Details: </span>
+                <input id="swal_subscription" class="swal2-input" value="${ownerdata.subsupdate}"  style="margin:0;">
+            </label>
+      
+     
+      
+      </div>
+    
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Update',
+    preConfirm: async () => {
+   
+
+    const key = ownerdata.key; // locked
+	const owner = document.getElementById('swal_owner').value.trim();
+	const contact = document.getElementById('swal_contact').value.trim();
+    const subsupdate = document.getElementById('swal_subscription').value.trim();
+      
+      
+       if (!key) {
+        Swal.showValidationMessage('Invalid record key');
+        return false;
+      }
+
+  
+        try{
+        await update(ref(db, `flatowners/${key}`), {
+          	owner: owner,
+	        contact: contact,
+	        subsupdate: subsupdate
+            	
+        });
+        console.log("Update finished");
+        return true;
+      } catch (err) {
+            console.error("ERROR:", err);
+            console.error("STACK:", err.stack);
+            Swal.showValidationMessage(err.message);
+      }
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire("Updated", "Owner data updated", "success");
+   
+    }
+  });
+};
+
+/* ============================= */
+/* ===== SEARCH + FILTER ===== */
+/* ============================= */
+document.getElementById("searchInput").addEventListener("keyup", function(){
+    renderTable();
+    
+});
+
+
+/* ============================= */
+/* ===== EXPORT TO EXCEL ===== */
+/* ============================= */
+document.getElementById("exportBtn").addEventListener("click", function () {
+
+    $("#ownerdata-table").table2excel({
+        exclude: ".noExl",
+        name: "Owners' Report",
+        filename: "Owners_Report",
+        fileext: ".xls"
+    });
+
+});
+
+    </script>
+</body>
+</html>
